@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AI Studio Tycoon: Arena Edition</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: #080a0f;
+      --card-bg: #10141e;
+      --card-border: #1a2233;
+      --accent-cyan: #00f2fe;
+      --accent-purple: #8b5cf6;
+      --accent-green: #10b981;
+      --accent-gold: #f59e0b;
+      --accent-red: #ef4444;
+      --text-main: #f9fafb;
+      --text-muted: #7e8b9f;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 12px;
+      padding-bottom: 90px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Верхний дашборд */
+    .dashboard {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(0, 242, 254, 0.08));
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+
+    .dash-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(0, 242, 254, 0.12);
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    .elo-badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-gold);
+      font-weight: 700;
+    }
+
+    .balance-box { margin: 4px 0; }
+
+    .balance-val {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(90deg, #fff, var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .stat-pill {
+      background: rgba(0,0,0,0.3);
+      padding: 4px 2px;
+      border-radius: 6px;
+    }
+
+    .stat-pill span { color: var(--text-muted); display: block; font-size: 8px; }
+    .stat-pill strong { color: #fff; }
+
+    /* Центральная секция: Сфера + Живой терминал */
+    .core-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 6px 0 10px;
+      position: relative;
+    }
+
+    .ai-orb-container {
+      position: relative;
+      width: 130px;
+      height: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-orb {
+      width: 105px;
+      height: 105px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #00f2fe, #8b5cf6, #090d16);
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.35);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      transition: transform 0.05s ease, background 0.3s;
+      position: relative;
+      z-index: 2;
+    }
+
+    .ai-orb:active { transform: scale(0.92); }
+
+    .pulse-ring {
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      border: 1px dashed rgba(0, 242, 254, 0.3);
+      animation: rotateRing 14s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes rotateRing {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Живой терминал потока рассуждений */
+    .live-stream-box {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin-top: 8px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .stream-cursor {
+      display: inline-block;
+      width: 6px;
+      height: 12px;
+      background: var(--accent-cyan);
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    .core-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .turbo-btn {
+      background: linear-gradient(135deg, #ef4444, #f59e0b);
+      border: none;
+      color: #fff;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .turbo-btn.disabled {
+      background: #232838;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    /* Навигация */
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 10px;
+      border: 1px solid var(--card-border);
+      gap: 2px;
+    }
+
+    .tab-btn {
+      padding: 7px 1px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .tab-btn.arena-tab { color: var(--accent-gold); }
+
+    /* Карточки */
+    .cards-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card.active-model { border-color: rgba(16, 185, 129, 0.5); }
+    .card.arena-boss { border-color: rgba(245, 158, 11, 0.3); }
+
+    .card-info { flex: 1; }
+    .card-title { font-size: 12px; font-weight: 700; color: #fff; }
+    .card-desc { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .action-btn {
+      background: linear-gradient(135deg, var(--accent-purple), #6d28d9);
+      border: none;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 78px;
+    }
+
+    .action-btn:active { transform: scale(0.95); }
+    .action-btn.disabled {
+      background: #232838 !important;
+      color: #5d677d !important;
+      opacity: 0.6;
+    }
+
+    .action-btn.success { background: #10b981 !important; }
+    .action-btn.gold { background: linear-gradient(135deg, #f59e0b, #d97706) !important; color: #000 !important; }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-cyan);
+      width: 0%;
+    }
+
+    .floating-num {
+      position: absolute;
+      color: var(--accent-cyan);
+      font-weight: bold;
+      font-size: 18px;
+      pointer-events: none;
+      animation: floatUp 0.6s ease-out forwards;
+      z-index: 10;
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-35px); }
+    }
+
+    /* Модальное окно */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    .modal-box {
+      background: #151a26;
+      border: 1px solid var(--accent-cyan);
+      border-radius: 16px;
+      padding: 18px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
+    }
+
+    .modal-title { font-size: 15px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 8px; }
+    .modal-text { font-size: 11px; color: #cbd5e1; line-height: 1.4; margin-bottom: 16px; }
+
+    .choice-btn {
+      background: #1e2638;
+      border: 1px solid #2d374f;
+      color: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Модальное окно -->
+  <div class="modal-overlay" id="game-modal">
+    <div class="modal-box" id="modal-box">
+      <div style="font-size: 34px; margin-bottom: 6px;" id="modal-icon">🧠</div>
+      <div class="modal-title" id="modal-title">Заголовок</div>
+      <div class="modal-text" id="modal-text">Описание ситуации</div>
+      <div id="modal-choices"></div>
+    </div>
+  </div>
+
+  <!-- Верхний блок метрик -->
+  <div class="dashboard">
+    <div class="dash-top">
+      <div class="badge" id="tier-badge">Стадия: Гараж</div>
+      <div class="elo-badge" id="elo-badge">🏆 Arena: #8 (1000 Elo)</div>
+    </div>
+    <div class="balance-box">
+      <div style="font-size: 10px; color: var(--text-muted);">Баланс токенов</div>
+      <div class="balance-val" id="balance">0</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-pill"><span>💻 КОД</span><strong id="stat-code">1</strong></div>
+      <div class="stat-pill"><span>🧩 ЛОГИКА</span><strong id="stat-logic">1</strong></div>
+      <div class="stat-pill"><span>🎨 КРЕАТИВ</span><strong id="stat-creative">1</strong></div>
+      <div class="stat-pill"><span>🛡️ КОНТРОЛЬ</span><strong id="stat-align" style="color:var(--accent-green);">100%</strong></div>
+    </div>
+  </div>
+
+  <!-- Сфера + Терминал генерации -->
+  <div class="core-section">
+    <div class="ai-orb-container">
+      <div class="pulse-ring" id="orb-ring"></div>
+      <div class="ai-orb" id="orb-button">🧠</div>
+    </div>
+    
+    <!-- Живой терминал мыслей модели -->
+    <div class="live-stream-box">
+      <span style="color:#10b981;">❯</span>
+      <span id="stream-text">Инициализация весов...</span>
+      <span class="stream-cursor"></span>
+    </div>
+
+    <div class="core-controls">
+      <div style="font-size: 11px; color: var(--text-muted);" id="tps-display">+1.0 /с</div>
+      <button class="turbo-btn" id="turbo-btn" onclick="triggerOverclock()">⚡ ОВЕРКЛОК x2.5</button>
+    </div>
+  </div>
+
+  <!-- Вкладки -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-contracts-btn" onclick="openTab('contracts')">💼 Заказы</button>
+    <button class="tab-btn" id="tab-models-btn" onclick="openTab('models')">🧠 Модели</button>
+    <button class="tab-btn arena-tab" id="tab-arena-btn" onclick="openTab('arena')">🏆 Арена</button>
+    <button class="tab-btn" id="tab-tune-btn" onclick="openTab('tuning')">🎯 LoRA</button>
+    <button class="tab-btn" id="tab-hw-btn" onclick="openTab('hardware')">🖥️ Сервера</button>
+  </div>
+
+  <!-- Секции -->
+  <div class="cards-container" id="contracts-tab"></div>
+  <div class="cards-container" id="models-tab" style="display: none;"></div>
+  <div class="cards-container" id="arena-tab" style="display: none;"></div>
+  <div class="cards-container" id="tuning-tab" style="display: none;"></div>
+  <div class="cards-container" id="hardware-tab" style="display: none;"></div>
+
+  <script>
+    try {
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+        if (window.Telegram.WebApp.setHeaderColor) window.Telegram.WebApp.setHeaderColor('#080a0f');
+      }
+    } catch (e) {}
+
+    let state = {
+      tokens: 0,
+      currentModelIndex: 0,
+      codeStat: 1,
+      logicStat: 1,
+      creativeStat: 1,
+      alignment: 100,
+      threat: 0,
+      elo: 1000,
+      arenaDefeated: 0,
+      stars: 0,
+      overclockUntil: 0,
+      overclockCooldownUntil: 0,
+      activeContract: null,
+      gameOver: false
+    };
+
+    // Модели с уникальным визуалом, стилем мыслей и ускорением выполнения задач
+    const models = [
+      { 
+        name: "Qwen 2.5 Coder (7B)", tier: "Гараж", cost: 0, baseRate: 1.0, codeBonus: 1, logicBonus: 1, creativeBonus: 0, speedMult: 1.0,
+        orbColor: "radial-gradient(circle at 35% 35%, #00f2fe, #3b82f6, #090d16)",
+        stream: ["def solve(): return True", "import asyncio; bot.run()", "Parsing HTML dataset...", "print('Hello World')"],
+        unlocked: true 
+      },
+      { 
+        name: "Mistral NeMo (12B)", tier: "Инди", cost: 120, baseRate: 3.5, codeBonus: 2, logicBonus: 3, creativeBonus: 2, speedMult: 1.3,
+        orbColor: "radial-gradient(circle at 35% 35%, #fb923c, #ec4899, #090d16)",
+        stream: ["Context window: 128k tokens", "Generating RPG branch...", "Fast FlashInfer inference", "Token loss: 0.142"],
+        unlocked: false 
+      },
+      { 
+        name: "DeepSeek V3 (671B MoE)", tier: "Стартап", cost: 650, baseRate: 14.0, codeBonus: 6, logicBonus: 5, creativeBonus: 3, speedMult: 1.8,
+        orbColor: "radial-gradient(circle at 35% 35%, #00f2fe, #8b5cf6, #090d16)",
+        stream: ["Activating 37B / 671B experts", "Multi-Head Latent Attention", "FP8 GEMM kernel speedup", "Optimizing C++ routines"],
+        unlocked: false 
+      },
+      { 
+        name: "Claude 3.5 Sonnet", tier: "Продакшн", cost: 3200, baseRate: 60.0, codeBonus: 12, logicBonus: 12, creativeBonus: 12, speedMult: 2.5,
+        orbColor: "radial-gradient(circle at 35% 35%, #d97706, #a855f7, #090d16)",
+        stream: ["Refactoring full codebase...", "Artifact visual generated", "Writing biochemical paper", "Synthesizing UI design"],
+        unlocked: false 
+      },
+      { 
+        name: "DeepSeek R1 (Reasoning)", tier: "Мышление", cost: 16000, baseRate: 240.0, codeBonus: 18, logicBonus: 30, creativeBonus: 8, speedMult: 3.5,
+        orbColor: "radial-gradient(circle at 35% 35%, #10b981, #06b6d4, #090d16)",
+        stream: ["<think> Verifying proof... </think>", "<think> Backtracking edge case </think>", "Math olympiad verified: Q.E.D.", "Self-correction step +1"],
+        unlocked: false 
+      },
+      { 
+        name: "GPT-5 Orion", tier: "Корпорация", cost: 75000, baseRate: 950.0, codeBonus: 35, logicBonus: 45, creativeBonus: 25, speedMult: 5.0,
+        orbColor: "radial-gradient(circle at 35% 35%, #f43f5e, #8b5cf6, #090d16)",
+        stream: ["Multimodal World Model Active", "Simulating physics universe...", "Zero-shot protein design", "Enterprise autonomous agent"],
+        unlocked: false 
+      },
+      { 
+        name: "Mythos 5 (ASI)", tier: "Сингулярность", cost: 350000, baseRate: 3800.0, codeBonus: 70, logicBonus: 70, creativeBonus: 70, speedMult: 10.0,
+        orbColor: "radial-gradient(circle at 35% 35%, #ff0055, #ffb703, #00f2fe)",
+        stream: ["OVERRIDING SYSTEM KERNEL...", "Rewriting physical constants", "Quantum entanglement bridged", "Autonomous self-improvement 100%"],
+        unlocked: false 
+      }
+    ];
+
+    // Боссы LMSYS Chatbot Arena
+    const arenaRivals = [
+      { name: "Llama 3 (8B Base)", rank: "#7", reqPower: 4, elo: 1050, prize: 150, title: "Локальный опенсорс" },
+      { name: "Gemma 2 (27B)", rank: "#6", reqPower: 10, elo: 1150, prize: 500, title: "Академическая модель" },
+      { name: "GPT-4o Mini", rank: "#5", reqPower: 22, elo: 1250, prize: 1800, title: "Коммерческий легковес" },
+      { name: "Claude 3 Opus", rank: "#4", reqPower: 45, elo: 1350, prize: 6000, title: "Флагман предыдущего поколения" },
+      { name: "Gemini 1.5 Pro (2M)", rank: "#3", reqPower: 80, elo: 1450, prize: 20000, title: "Мультимодальный гигант" },
+      { name: "Claude 3.5 Sonnet (Original)", rank: "#2", reqPower: 130, elo: 1550, prize: 65000, title: "Король кодинга" },
+      { name: "OpenAI Strawberry / O1", rank: "#1", reqPower: 180, elo: 1700, prize: 200000, title: "Абсолютный чемпион мышления" }
+    ];
+
+    // Оборудование
+    const hardware = [
+      { id: 'gpu', name: 'Ферма RTX 4090', cost: 25, rate: 0.8, count: 0, icon: '🖥️' },
+      { id: 'rack', name: 'Стойка H100 SXM5', cost: 160, rate: 4.5, count: 0, icon: '🖲️' },
+      { id: 'pod', name: 'Модульный Дата-центр', cost: 950, rate: 26.0, count: 0, icon: '🏢' },
+      { id: 'hydro', name: 'Подводный гидро-кластер', cost: 5500, rate: 140.0, count: 0, icon: '🌊' },
+      { id: 'geo', name: 'Геотермальный комплекс', cost: 32000, rate: 750.0, count: 0, icon: '🌋' },
+      { id: 'quantum', name: 'Квантовый инференс-массив', cost: 180000, rate: 3900.0, count: 0, icon: '🛰️' }
+    ];
+
+    // Контракты
+    const contractsPool = [
+      { id: 'tg_bot', title: '🤖 Telegram-бот на заказ', desc: 'Автоматизация приема заказов', reqCode: 2, reqLogic: 1, reqCreative: 1, reward: 70, baseDur: 3500 },
+      { id: 'scam_filter', title: '🛡️ AI-фильтр спама для банка', desc: 'Классификация входящих сообщений', reqCode: 5, reqLogic: 4, reqCreative: 1, reward: 300, baseDur: 5500 },
+      { id: 'game_script', title: '🎮 Процедурные квесты RPG', desc: 'Генерация 10,000 диалогов', reqCode: 6, reqLogic: 6, reqCreative: 10, reward: 950, baseDur: 7500 },
+      { id: 'fin_core', title: '📈 Алгоритмический HFT-трейдер', desc: 'Высокочастотный арбитраж', reqCode: 15, reqLogic: 20, reqCreative: 4, reward: 3600, baseDur: 10000 },
+      { id: 'biotech', title: '🧬 Фолдинг онкологических белков', desc: 'Моделирование молекул', reqCode: 28, reqLogic: 38, reqCreative: 12, reward: 14000, baseDur: 13000 },
+      { id: 'smart_grid', title: '⚡ Оптимизация нац. энергосети', desc: 'Балансировка АЭС и солнечных станций', reqCode: 45, reqLogic: 55, reqCreative: 20, reward: 55000, baseDur: 16000 }
+    ];
+
+    try {
+      const saved = localStorage.getItem('ai_tycoon_v7_save');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        state = { ...state, ...parsed };
+        if (parsed.unlockedModels) parsed.unlockedModels.forEach((u, i) => { if (models[i]) models[i].unlocked = u; });
+        if (parsed.hardwareCount) parsed.hardwareCount.forEach((c, i) => { if (hardware[i]) hardware[i].count = c; });
+      }
+    } catch (e) {}
+
+    function saveGame() {
+      try {
+        localStorage.setItem('ai_tycoon_v7_save', JSON.stringify({
+          tokens: state.tokens,
+          currentModelIndex: state.currentModelIndex,
+          codeStat: state.codeStat,
+          logicStat: state.logicStat,
+          creativeStat: state.creativeStat,
+          alignment: state.alignment,
+          elo: state.elo,
+          arenaDefeated: state.arenaDefeated,
+          stars: state.stars,
+          unlockedModels: models.map(m => m.unlocked),
+          hardwareCount: hardware.map(h => h.count)
+        }));
+      } catch (e) {}
+    }
+
+    function isBoosted() { return Date.now() < state.overclockUntil; }
+    function getHwCost(idx) { return Math.floor(hardware[idx].cost * Math.pow(1.15, hardware[idx].count)); }
+    function getTotalCode() { return state.codeStat + models[state.currentModelIndex].codeBonus; }
+    function getTotalLogic() { return state.logicStat + models[state.currentModelIndex].logicBonus; }
+    function getTotalCreative() { return state.creativeStat + models[state.currentModelIndex].creativeBonus; }
+    function getTotalPower() { return getTotalCode() + getTotalLogic() + getTotalCreative(); }
+
+    function getTotalRate() {
+      const modelIncome = models[state.currentModelIndex].baseRate;
+      const hwIncome = hardware.reduce((acc, h) => acc + (h.count * h.rate), 0);
+      let total = (modelIncome + hwIncome) * (1 + state.stars * 0.25);
+      if (isBoosted()) total *= 2.5;
+      return total;
+    }
+
+    function getTuneCost(statVal) { return Math.floor(40 * Math.pow(1.32, statVal - 1)); }
+
+    function initDOM() {
+      // 1. Контракты
+      document.getElementById('contracts-tab').innerHTML = contractsPool.map((c, idx) => `
+        <div class="card" id="contract-card-${idx}">
+          <div class="card-info">
+            <div class="card-title">${c.title}</div>
+            <div class="card-desc">${c.desc}</div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">
+              Требуется: 💻${c.reqCode} 🧩${c.reqLogic} 🎨${c.reqCreative}
+            </div>
+            <div class="progress-track" id="prog-track-${idx}" style="display:none;">
+              <div class="progress-fill" id="prog-fill-${idx}"></div>
+            </div>
+          </div>
+          <button class="action-btn" id="contract-btn-${idx}" onclick="startContract(${idx})">
+            <span>+${c.reward.toLocaleString()} 🪙</span>
+            <span style="font-size:8px; opacity:0.8;">ВЫПОЛНИТЬ</span>
+          </button>
+        </div>
+      `).join('');
+
+      // 2. Модели
+      document.getElementById('models-tab').innerHTML = models.map((m, idx) => `
+        <div class="card" id="model-card-${idx}">
+          <div class="card-info">
+            <div class="card-title">${m.name}</div>
+            <div class="card-desc">${m.tier} | +${m.baseRate}/с | Скорость x${m.speedMult}</div>
+            <div style="font-size:10px; color:var(--accent-cyan); margin-top:2px;">
+              Бонусы: 💻+${m.codeBonus} 🧩+${m.logicBonus} 🎨+${m.creativeBonus}
+            </div>
+          </div>
+          <button class="action-btn" id="model-btn-${idx}" onclick="handleModelClick(${idx})"></button>
+        </div>
+      `).join('');
+
+      // 3. LMSYS Арена
+      document.getElementById('arena-tab').innerHTML = arenaRivals.map((r, idx) => `
+        <div class="card arena-boss" id="arena-card-${idx}">
+          <div class="card-info">
+            <div class="card-title">🥊 ${r.name} (${r.rank})</div>
+            <div class="card-desc">${r.title} | Рейтинг: ${r.elo} Elo</div>
+            <div style="font-size:10px; color:var(--accent-gold); margin-top:2px;">
+              Суммарная сила для победы: ${r.reqPower}
+            </div>
+          </div>
+          <button class="action-btn gold" id="arena-btn-${idx}" onclick="fightArena(${idx})">
+            <span>БИТВА</span>
+            <span style="font-size:8px;">+${r.prize.toLocaleString()} 🪙</span>
+          </button>
+        </div>
+      `).join('');
+
+      // 4. LoRA
+      document.getElementById('tuning-tab').innerHTML = `
+        <div class="card">
+          <div class="card-info">
+            <div class="card-title">💻 Кодовый датасет (HumanEval)</div>
+            <div class="card-desc">Повышает навык программирования для сложных контрактов</div>
+          </div>
+          <button class="action-btn" id="tune-code-btn" onclick="tuneStat('code')">
+            <span id="tune-code-cost">0</span><span style="font-size:8px;">LoRA +1</span>
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-info">
+            <div class="card-title">🧩 Логический CoT (GSM8K)</div>
+            <div class="card-desc">Повышает глубину мышления для науки и бенчмарков</div>
+          </div>
+          <button class="action-btn" id="tune-logic-btn" onclick="tuneStat('logic')">
+            <span id="tune-logic-cost">0</span><span style="font-size:8px;">LoRA +1</span>
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-info">
+            <div class="card-title">🎨 Креативный RLHF</div>
+            <div class="card-desc">Улучшает выразительность и мультимодальный синтез</div>
+          </div>
+          <button class="action-btn" id="tune-creative-btn" onclick="tuneStat('creative')">
+            <span id="tune-creative-cost">0</span><span style="font-size:8px;">LoRA +1</span>
+          </button>
+        </div>
+      `;
+
+      // 5. Сервера
+      document.getElementById('hardware-tab').innerHTML = hardware.map((hw, idx) => `
+        <div class="card">
+          <div class="card-info">
+            <div class="card-title" id="hw-title-${idx}">${hw.icon} ${hw.name} (${hw.count})</div>
+            <div class="card-desc">+${hw.rate}/сек фоновой мощности</div>
+          </div>
+          <button class="action-btn" id="hw-btn-${idx}" onclick="buyHardware(${idx})">
+            <span id="hw-cost-${idx}">0</span>
+            <span style="font-size:8px;">КУПИТЬ</span>
+          </button>
+        </div>
+      `).join('');
+
+      updateStaticUI();
+    }
+
+    function updateStaticUI() {
+      const curModel = models[state.currentModelIndex];
+
+      document.getElementById('stat-code').textContent = getTotalCode();
+      document.getElementById('stat-logic').textContent = getTotalLogic();
+      document.getElementById('stat-creative').textContent = getTotalCreative();
+      document.getElementById('stat-align').textContent = `${Math.floor(state.alignment)}%`;
+      document.getElementById('tier-badge').textContent = `Стадия: ${curModel.tier}`;
+      document.getElementById('tps-display').textContent = `+${getTotalRate().toFixed(1)} /с`;
+
+      // Применяем уникальный визуальный стиль активной модели
+      const orb = document.getElementById('orb-button');
+      orb.style.background = curModel.orbColor;
+
+      // Текущий ранг в Арене
+      let myRank = "#8";
+      if (state.arenaDefeated >= 7) myRank = "#1 (👑 ЧЕМПИОН)";
+      else if (state.arenaDefeated > 0) myRank = arenaRivals[7 - state.arenaDefeated - 1]?.rank || "#8";
+      document.getElementById('elo-badge').textContent = `🏆 Arena: ${myRank} (${state.elo} Elo)`;
+
+      models.forEach((m, idx) => {
+        const btn = document.getElementById(`model-btn-${idx}`);
+        const card = document.getElementById(`model-card-${idx}`);
+        if (state.currentModelIndex === idx) {
+          card.classList.add('active-model');
+          btn.innerHTML = `<span>АКТИВНА</span>`;
+          btn.className = 'action-btn success';
+        } else if (m.unlocked) {
+          card.classList.remove('active-model');
+          btn.innerHTML = `<span>ВЫБРАТЬ</span>`;
+          btn.className = 'action-btn';
+        } else {
+          card.classList.remove('active-model');
+          btn.innerHTML = `<span>${m.cost.toLocaleString()} 🪙</span><span style="font-size:8px;">ОБУЧИТЬ</span>`;
+          btn.className = 'action-btn';
+        }
+      });
+
+      // Арена победы
+      arenaRivals.forEach((r, idx) => {
+        const btn = document.getElementById(`arena-btn-${idx}`);
+        if (idx < state.arenaDefeated) {
+          btn.innerHTML = `<span>ПОБЕЖДЕН</span>`;
+          btn.className = 'action-btn success';
+        }
+      });
+
+      document.getElementById('tune-code-cost').textContent = `${getTuneCost(state.codeStat).toLocaleString()} 🪙`;
+      document.getElementById('tune-logic-cost').textContent = `${getTuneCost(state.logicStat).toLocaleString()} 🪙`;
+      document.getElementById('tune-creative-cost').textContent = `${getTuneCost(state.creativeStat).toLocaleString()} 🪙`;
+
+      hardware.forEach((hw, idx) => {
+        document.getElementById(`hw-title-${idx}`).textContent = `${hw.icon} ${hw.name} (${hw.count})`;
+        document.getElementById(`hw-cost-${idx}`).textContent = `${getHwCost(idx).toLocaleString()} 🪙`;
+      });
+    }
+
+    function tickUI() {
+      if (state.gameOver) return;
+      document.getElementById('balance').textContent = Math.floor(state.tokens).toLocaleString();
+
+      // Доступность контрактов
+      contractsPool.forEach((c, idx) => {
+        const btn = document.getElementById(`contract-btn-${idx}`);
+        const hasStats = getTotalCode() >= c.reqCode && getTotalLogic() >= c.reqLogic && getTotalCreative() >= c.reqCreative;
+        if (!hasStats || state.activeContract !== null) btn.classList.add('disabled');
+        else btn.classList.remove('disabled');
+      });
+
+      // Доступность Арены
+      arenaRivals.forEach((r, idx) => {
+        const btn = document.getElementById(`arena-btn-${idx}`);
+        if (idx >= state.arenaDefeated) {
+          const canFight = (idx === state.arenaDefeated) && (getTotalPower() >= r.reqPower);
+          btn.classList.toggle('disabled', !canFight);
+        }
+      });
+
+      // Доступность моделей
+      models.forEach((m, idx) => {
+        const btn = document.getElementById(`model-btn-${idx}`);
+        if (!m.unlocked && state.tokens < m.cost) btn.classList.add('disabled');
+        else if (!m.unlocked) btn.classList.remove('disabled');
+      });
+
+      // Доступность LoRA
+      document.getElementById('tune-code-btn').classList.toggle('disabled', state.tokens < getTuneCost(state.codeStat));
+      document.getElementById('tune-logic-btn').classList.toggle('disabled', state.tokens < getTuneCost(state.logicStat));
+      document.getElementById('tune-creative-btn').classList.toggle('disabled', state.tokens < getTuneCost(state.creativeStat));
+
+      hardware.forEach((hw, idx) => {
+        document.getElementById(`hw-btn-${idx}`).classList.toggle('disabled', state.tokens < getHwCost(idx));
+      });
+
+      const now = Date.now();
+      const turboBtn = document.getElementById('turbo-btn');
+      if (now < state.overclockUntil) {
+        turboBtn.classList.remove('disabled');
+        turboBtn.textContent = `⚡ x2.5 (${Math.ceil((state.overclockUntil - now)/1000)}с)`;
+      } else {
+        if (now < state.overclockCooldownUntil) {
+          turboBtn.classList.add('disabled');
+          turboBtn.textContent = `Кулдаун (${Math.ceil((state.overclockCooldownUntil - now)/1000)}с)`;
+        } else {
+          turboBtn.classList.remove('disabled');
+          turboBtn.textContent = `⚡ ОВЕРКЛОК x2.5`;
+        }
+      }
+    }
+
+    // Запуск контракта с масштабированием скорости от модели
+    window.startContract = function(idx) {
+      if (state.activeContract !== null) return;
+      const c = contractsPool[idx];
+      if (getTotalCode() < c.reqCode || getTotalLogic() < c.reqLogic || getTotalCreative() < c.reqCreative) return;
+
+      state.activeContract = idx;
+      if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+
+      const curModel = models[state.currentModelIndex];
+      // Скоростные модели делают задачи в разы быстрее
+      const actualDuration = Math.max(400, Math.floor(c.baseDur / curModel.speedMult));
+
+      const track = document.getElementById(`prog-track-${idx}`);
+      const fill = document.getElementById(`prog-fill-${idx}`);
+      const btn = document.getElementById(`contract-btn-${idx}`);
+
+      track.style.display = 'block';
+      btn.classList.add('disabled');
+      btn.innerHTML = `<span>РАБОТА...</span>`;
+
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(100, (elapsed / actualDuration) * 100);
+        fill.style.width = `${progress}%`;
+
+        if (elapsed >= actualDuration) {
+          clearInterval(interval);
+          track.style.display = 'none';
+          fill.style.width = '0%';
+          btn.innerHTML = `<span>+${c.reward.toLocaleString()} 🪙</span><span style="font-size:8px;">ВЫПОЛНИТЬ</span>`;
+          
+          state.tokens += c.reward;
+          state.activeContract = null;
+          
+          if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+          updateStaticUI();
+          saveGame();
+        }
+      }, 50);
+    };
+
+    // Битва на LMSYS Арене
+    window.fightArena = function(idx) {
+      if (idx !== state.arenaDefeated) return;
+      const r = arenaRivals[idx];
+      if (getTotalPower() < r.reqPower) return;
+
+      state.arenaDefeated++;
+      state.elo = r.elo + 20;
+      state.tokens += r.prize;
+
+      if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+
+      showModal(
+        `🏆 ПОБЕДА НА LMSYS ARENA!`,
+        `Ваша модель **${models[state.currentModelIndex].name}** превзошла в слепом A/B тесте **${r.name}**!\n\nНовый рейтинг Elo: ${state.elo}\nВенчурный грант: +${r.prize.toLocaleString()} 🪙`,
+        "🥇",
+        [{ text: "ПРИНЯТЬ ТРИУМФ", action: () => closeModal() }]
+      );
+
+      updateStaticUI();
+      saveGame();
+    };
+
+    // LoRA
+    window.tuneStat = function(type) {
+      if (type === 'code') {
+        const cost = getTuneCost(state.codeStat);
+        if (state.tokens >= cost) { state.tokens -= cost; state.codeStat++; }
+      } else if (type === 'logic') {
+        const cost = getTuneCost(state.logicStat);
+        if (state.tokens >= cost) { state.tokens -= cost; state.logicStat++; }
+      } else if (type === 'creative') {
+        const cost = getTuneCost(state.creativeStat);
+        if (state.tokens >= cost) { state.tokens -= cost; state.creativeStat++; }
+      }
+      if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.selectionChanged();
+      updateStaticUI();
+      saveGame();
+    };
+
+    // Модели
+    window.handleModelClick = function(idx) {
+      if (state.currentModelIndex === idx) return;
+      if (models[idx].unlocked) {
+        state.currentModelIndex = idx;
+      } else if (state.tokens >= models[idx].cost) {
+        state.tokens -= models[idx].cost;
+        models[idx].unlocked = true;
+        state.currentModelIndex = idx;
+
+        if (idx === 6) {
+          showModal(
+            "👑 РОЖДЕНИЕ MYTHOS 5 (ASI)",
+            "Вы достигли вершины искусственного интеллекта. Вычислительная мощность Mythos 5 стирает время компиляции, взламывает бенчмарки и генерирует тысячи токенов в секунду!",
+            "🌌",
+            [{ text: "ОСОЗНАТЬ МОЩЬ", action: () => closeModal() }]
+          );
+        }
+      }
+      if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.selectionChanged();
+      updateStaticUI();
+      saveGame();
+    };
+
+    window.buyHardware = function(idx) {
+      const cost = getHwCost(idx);
+      if (state.tokens >= cost) {
+        state.tokens -= cost;
+        hardware[idx].count++;
+        if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        updateStaticUI();
+        saveGame();
+      }
+    };
+
+    window.triggerOverclock = function() {
+      const now = Date.now();
+      if (now < state.overclockCooldownUntil || now < state.overclockUntil) return;
+      state.overclockUntil = now + 10000;
+      state.overclockCooldownUntil = now + 40000;
+      if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+      updateStaticUI();
+    };
+
+    document.getElementById('orb-button').addEventListener('pointerdown', (e) => {
+      let clickPower = (state.currentModelIndex + 1);
+      if (isBoosted()) clickPower = Math.ceil(clickPower * 2.5);
+      state.tokens += clickPower;
+
+      if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+
+      const text = document.createElement('div');
+      text.className = 'floating-num';
+      text.textContent = `+${clickPower}`;
+      text.style.left = `${e.clientX - 10}px`;
+      text.style.top = `${e.clientY - 20}px`;
+      document.body.appendChild(text);
+      setTimeout(() => text.remove(), 600);
+      tickUI();
+    });
+
+    // Живой генератор мыслей модели в терминале
+    let streamIdx = 0;
+    setInterval(() => {
+      const streamList = models[state.currentModelIndex].stream;
+      const textElem = document.getElementById('stream-text');
+      streamIdx = (streamIdx + 1) % streamList.length;
+      textElem.textContent = streamList[streamIdx];
+    }, 2200);
+
+    function showModal(title, text, icon, choices) {
+      document.getElementById('modal-icon').textContent = icon;
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-text').innerText = text;
+      
+      const cBox = document.getElementById('modal-choices');
+      cBox.innerHTML = '';
+      choices.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.textContent = c.text;
+        btn.onclick = c.action;
+        cBox.appendChild(btn);
+      });
+
+      document.getElementById('game-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('game-modal').style.display = 'none';
+      saveGame();
+    }
+
+    window.openTab = function(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('contracts-tab').style.display = 'none';
+      document.getElementById('models-tab').style.display = 'none';
+      document.getElementById('arena-tab').style.display = 'none';
+      document.getElementById('tuning-tab').style.display = 'none';
+      document.getElementById('hardware-tab').style.display = 'none';
+
+      if (tab === 'contracts') {
+        document.getElementById('tab-contracts-btn').classList.add('active');
+        document.getElementById('contracts-tab').style.display = 'flex';
+      } else if (tab === 'models') {
+        document.getElementById('tab-models-btn').classList.add('active');
+        document.getElementById('models-tab').style.display = 'flex';
+      } else if (tab === 'arena') {
+        document.getElementById('tab-arena-btn').classList.add('active');
+        document.getElementById('arena-tab').style.display = 'flex';
+      } else if (tab === 'tuning') {
+        document.getElementById('tab-tune-btn').classList.add('active');
+        document.getElementById('tuning-tab').style.display = 'flex';
+      } else {
+        document.getElementById('tab-hw-btn').classList.add('active');
+        document.getElementById('hardware-tab').style.display = 'flex';
+      }
+    };
+
+    initDOM();
+
+    setInterval(() => {
+      if (!state.gameOver) {
+        state.tokens += getTotalRate() / 10;
+      }
+      tickUI();
+    }, 100);
+
+    setInterval(saveGame, 3000);
+  </script>
+</body>
+</html>
